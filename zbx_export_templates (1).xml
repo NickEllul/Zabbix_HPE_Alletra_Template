@@ -1,0 +1,1016 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zabbix_export>
+    <version>7.2</version>
+    <template_groups>
+        <template_group>
+            <uuid>7df96b18c230490a9a0a9e2307226338</uuid>
+            <name>Templates</name>
+        </template_group>
+    </template_groups>
+    <templates>
+        <template>
+            <uuid>a492bccd5043411ab844268da91af9fc</uuid>
+            <template>HPE Alletra Storage by HTTP</template>
+            <name>HPE Alletra Storage by HTTP</name>
+            <groups>
+                <group>
+                    <name>Templates</name>
+                </group>
+            </groups>
+            <items>
+                <item>
+                    <uuid>e1aef9c5ae7c43a4b1cd2043662eca7d</uuid>
+                    <name>Array Usable Capacity TiB</name>
+                    <type>DEPENDENT</type>
+                    <key>hpe.nimble.array.usable.capacity</key>
+                    <value_type>FLOAT</value_type>
+                    <trends>0</trends>
+                    <preprocessing>
+                        <step>
+                            <type>JSONPATH</type>
+                            <parameters>
+                                <parameter>$[*].usable_capacity_bytes</parameter>
+                            </parameters>
+                        </step>
+                        <step>
+                            <type>JSONPATH</type>
+                            <parameters>
+                                <parameter>$[0]</parameter>
+                            </parameters>
+                        </step>
+                        <step>
+                            <type>JAVASCRIPT</type>
+                            <parameters>
+                                <parameter>return Math.round((value / 1099511627776) * 100) / 100;</parameter>
+                            </parameters>
+                        </step>
+                    </preprocessing>
+                    <master_item>
+                        <key>hpe.nimble.get.arrays</key>
+                    </master_item>
+                </item>
+                <item>
+                    <uuid>b28d9f9190584acc92bc031d21c383fb</uuid>
+                    <name>Array Available Bytes TiB</name>
+                    <type>DEPENDENT</type>
+                    <key>hpe.nimble.available.bytes</key>
+                    <value_type>FLOAT</value_type>
+                    <trends>0</trends>
+                    <preprocessing>
+                        <step>
+                            <type>JSONPATH</type>
+                            <parameters>
+                                <parameter>$[*].available_bytes</parameter>
+                            </parameters>
+                        </step>
+                        <step>
+                            <type>JSONPATH</type>
+                            <parameters>
+                                <parameter>$[0]</parameter>
+                            </parameters>
+                        </step>
+                        <step>
+                            <type>JAVASCRIPT</type>
+                            <parameters>
+                                <parameter>return Math.round((value / 1099511627776) * 100) / 100;</parameter>
+                            </parameters>
+                        </step>
+                    </preprocessing>
+                    <master_item>
+                        <key>hpe.nimble.get.arrays</key>
+                    </master_item>
+                </item>
+                <item>
+                    <uuid>8eb48ec915344c1eb18d7db09fe92fb2</uuid>
+                    <name>Get Alarms</name>
+                    <type>DEPENDENT</type>
+                    <key>hpe.nimble.get.alarms</key>
+                    <value_type>TEXT</value_type>
+                    <preprocessing>
+                        <step>
+                            <type>JSONPATH</type>
+                            <parameters>
+                                <parameter>$.alarms.data</parameter>
+                            </parameters>
+                        </step>
+                        <step>
+                            <type>DISCARD_UNCHANGED_HEARTBEAT</type>
+                            <parameters>
+                                <parameter>12h</parameter>
+                            </parameters>
+                        </step>
+                    </preprocessing>
+                    <master_item>
+                        <key>hpe.nimble.get.data</key>
+                    </master_item>
+                </item>
+                <item>
+                    <uuid>e90a7ad310874499aea39baae0b0d04f</uuid>
+                    <name>Get Arrays</name>
+                    <type>DEPENDENT</type>
+                    <key>hpe.nimble.get.arrays</key>
+                    <value_type>TEXT</value_type>
+                    <preprocessing>
+                        <step>
+                            <type>JSONPATH</type>
+                            <parameters>
+                                <parameter>$.arrays.data</parameter>
+                            </parameters>
+                        </step>
+                    </preprocessing>
+                    <master_item>
+                        <key>hpe.nimble.get.data</key>
+                    </master_item>
+                </item>
+                <item>
+                    <uuid>1b3272da37e047e5ad7aec18c8387ed5</uuid>
+                    <name>Get Controllers</name>
+                    <type>DEPENDENT</type>
+                    <key>hpe.nimble.get.controllers</key>
+                    <value_type>TEXT</value_type>
+                    <preprocessing>
+                        <step>
+                            <type>JSONPATH</type>
+                            <parameters>
+                                <parameter>$.controllers.data</parameter>
+                            </parameters>
+                        </step>
+                    </preprocessing>
+                    <master_item>
+                        <key>hpe.nimble.get.data</key>
+                    </master_item>
+                </item>
+                <item>
+                    <uuid>e7d5c4f8ec7f4908a667301013edb5c1</uuid>
+                    <name>Get Data</name>
+                    <type>SCRIPT</type>
+                    <key>hpe.nimble.get.data</key>
+                    <value_type>TEXT</value_type>
+                    <params>var params = JSON.parse(value); // Get parameters passed from Zabbix
+
+var baseUrl = params.baseUrl
+var username = params.username
+var password = params.password
+
+function getSessionToken() {
+    var url = baseUrl + &quot;/v1/tokens&quot;;
+    var payload = JSON.stringify({
+        &quot;data&quot;: { &quot;username&quot;: username, &quot;password&quot;: password }
+    });
+
+    var request = new HttpRequest();
+    request.addHeader(&quot;Content-Type: application/json&quot;);
+
+    var response = request.post(url, payload);
+
+    if (!response) {
+        throw &quot;Error obtaining session token: No response&quot;;
+    }
+
+    var responseData = JSON.parse(response);
+    if (!responseData.data || !responseData.data.session_token) {
+        throw &quot;Error obtaining session token: Invalid response format&quot;;
+    }
+
+    return responseData.data.session_token;
+}
+
+function getNimbleData(sessionToken, endpoint) {
+    var url = baseUrl + &quot;/v1/&quot; + endpoint + &quot;/detail&quot;;
+
+    var request = new HttpRequest();
+    request.addHeader(&quot;X-Auth-Token: &quot; + sessionToken);
+    request.addHeader(&quot;Content-Type: application/json&quot;);
+
+    var response = request.get(url);
+
+    if (!response) {
+        throw &quot;Error retrieving data from &quot; + endpoint + &quot;: No response&quot;;
+    }
+
+    return JSON.parse(response);
+}
+
+// Main Execution
+try {
+    var sessionToken = getSessionToken();
+    var endpoints = [&quot;volumes&quot;, &quot;pools&quot;, &quot;controllers&quot;, &quot;events&quot;, &quot;alarms&quot;, &quot;arrays&quot;, &quot;network_interfaces&quot;, &quot;replication_partners&quot;];
+    var allData = {};
+
+    for (var i = 0; i &lt; endpoints.length; i++) {
+        allData[endpoints[i]] = getNimbleData(sessionToken, endpoints[i]);
+    }
+
+    return JSON.stringify(allData); // Zabbix expects a string output
+} catch (error) {
+    return &quot;Script Error: &quot; + error;
+}</params>
+                    <parameters>
+                        <parameter>
+                            <name>baseUrl</name>
+                            <value>https://{$HPE.NIMBLE.IP}:{$HPE.NIMBLE.API.PORT}</value>
+                        </parameter>
+                        <parameter>
+                            <name>password</name>
+                            <value>{$HPE.NIMBLE.API.PASSWORD}</value>
+                        </parameter>
+                        <parameter>
+                            <name>username</name>
+                            <value>{$HPE.NIMBLE.API.USERNAME}</value>
+                        </parameter>
+                    </parameters>
+                </item>
+                <item>
+                    <uuid>22a9ba54e48a40dab56aa8028605cc68</uuid>
+                    <name>Get Network Interfaces</name>
+                    <type>DEPENDENT</type>
+                    <key>hpe.nimble.get.network.interfaces</key>
+                    <value_type>TEXT</value_type>
+                    <preprocessing>
+                        <step>
+                            <type>JSONPATH</type>
+                            <parameters>
+                                <parameter>$.network_interfaces.data</parameter>
+                            </parameters>
+                        </step>
+                    </preprocessing>
+                    <master_item>
+                        <key>hpe.nimble.get.data</key>
+                    </master_item>
+                </item>
+                <item>
+                    <uuid>f51a0afe72964051bb4f1f788c6bd661</uuid>
+                    <name>Get Replication Partners</name>
+                    <type>DEPENDENT</type>
+                    <key>hpe.nimble.get.replication.partners</key>
+                    <value_type>TEXT</value_type>
+                    <preprocessing>
+                        <step>
+                            <type>JSONPATH</type>
+                            <parameters>
+                                <parameter>$.replication_partners.data</parameter>
+                            </parameters>
+                        </step>
+                        <step>
+                            <type>DISCARD_UNCHANGED_HEARTBEAT</type>
+                            <parameters>
+                                <parameter>12h</parameter>
+                            </parameters>
+                        </step>
+                    </preprocessing>
+                    <master_item>
+                        <key>hpe.nimble.get.data</key>
+                    </master_item>
+                </item>
+                <item>
+                    <uuid>e1f2362ab39745afa27c5df4a7c1e830</uuid>
+                    <name>Get Volumes</name>
+                    <type>DEPENDENT</type>
+                    <key>hpe.nimble.get.volumes</key>
+                    <value_type>TEXT</value_type>
+                    <preprocessing>
+                        <step>
+                            <type>JSONPATH</type>
+                            <parameters>
+                                <parameter>$.volumes.data</parameter>
+                            </parameters>
+                        </step>
+                    </preprocessing>
+                    <master_item>
+                        <key>hpe.nimble.get.data</key>
+                    </master_item>
+                </item>
+                <item>
+                    <uuid>b5a5a15b68574c028e5c0089341b043b</uuid>
+                    <name>Array Used Storage</name>
+                    <type>CALCULATED</type>
+                    <key>hpe.nimble.used.storage</key>
+                    <value_type>FLOAT</value_type>
+                    <params>last(//hpe.nimble.array.usable.capacity) - last(//hpe.nimble.available.bytes)</params>
+                </item>
+                <item>
+                    <uuid>f6efc711ec5f4e40b0d2ba76c71736f5</uuid>
+                    <name>Service Ping</name>
+                    <type>SIMPLE</type>
+                    <key>net.tcp.service[&quot;https&quot;,&quot;{$HPE.NIMBLE.IP}&quot;,&quot;{$HPE.NIMBLE.API.PORT}&quot;]</key>
+                    <description>Checks if the service is running and accepting the TCP connections.</description>
+                    <preprocessing>
+                        <step>
+                            <type>DISCARD_UNCHANGED_HEARTBEAT</type>
+                            <parameters>
+                                <parameter>1h</parameter>
+                            </parameters>
+                        </step>
+                    </preprocessing>
+                    <triggers>
+                        <trigger>
+                            <uuid>8e960da8f28c460e9834faeb631c725c</uuid>
+                            <expression>max(/HPE Alletra Storage by HTTP/net.tcp.service[&quot;https&quot;,&quot;{$HPE.NIMBLE.IP}&quot;,&quot;{$HPE.NIMBLE.API.PORT}&quot;],5m)=0</expression>
+                            <name>Service is unavailable</name>
+                            <priority>HIGH</priority>
+                        </trigger>
+                    </triggers>
+                </item>
+            </items>
+            <discovery_rules>
+                <discovery_rule>
+                    <uuid>2fa45c3c73ae4f3987fee37be49495bc</uuid>
+                    <name>Controller Discovery</name>
+                    <type>DEPENDENT</type>
+                    <key>hpe.nimble.controller.discovery</key>
+                    <item_prototypes>
+                        <item_prototype>
+                            <uuid>1a809e7fe6334dd799e4c26f2083d677</uuid>
+                            <name>Controller {#NAME} State</name>
+                            <type>DEPENDENT</type>
+                            <key>hpe.nimble.controller.[{#NAME}]</key>
+                            <trends>0</trends>
+                            <valuemap>
+                                <name>Controller Status</name>
+                            </valuemap>
+                            <preprocessing>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[?(@.name == '{#NAME}')]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].state</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[0]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JAVASCRIPT</type>
+                                    <parameters>
+                                        <parameter>if (value === &quot;active&quot;) {
+    return 1;
+} else if (value === &quot;standby&quot;) {
+    return 0;
+} else {
+    return null; // or handle unexpected values accordingly
+}</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>DISCARD_UNCHANGED_HEARTBEAT</type>
+                                    <parameters>
+                                        <parameter>1h</parameter>
+                                    </parameters>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>hpe.nimble.get.controllers</key>
+                            </master_item>
+                        </item_prototype>
+                    </item_prototypes>
+                    <master_item>
+                        <key>hpe.nimble.get.controllers</key>
+                    </master_item>
+                    <lld_macro_paths>
+                        <lld_macro_path>
+                            <lld_macro>{#NAME}</lld_macro>
+                            <path>$.name</path>
+                        </lld_macro_path>
+                        <lld_macro_path>
+                            <lld_macro>{#STATE}</lld_macro>
+                            <path>$.state</path>
+                        </lld_macro_path>
+                    </lld_macro_paths>
+                </discovery_rule>
+                <discovery_rule>
+                    <uuid>c42be17f2369478c83ff50c1a662fc18</uuid>
+                    <name>Get Volumes Discovery</name>
+                    <type>DEPENDENT</type>
+                    <key>hpe.nimble.get.volumes.mapped</key>
+                    <item_prototypes>
+                        <item_prototype>
+                            <uuid>6de63ae30de843c89d8785b8abecafaf</uuid>
+                            <name>Combined IOPS for {#POOLNAME}</name>
+                            <type>DEPENDENT</type>
+                            <key>hpe.nimble.combined.iops[{#POOLNAME}]</key>
+                            <trends>0</trends>
+                            <preprocessing>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[?(@.name == '{#POOLNAME}')]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].avg_stats_last_5mins</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].combined_iops</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[0]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JAVASCRIPT</type>
+                                    <parameters>
+                                        <parameter>return parseInt(value);
+</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>DISCARD_UNCHANGED_HEARTBEAT</type>
+                                    <parameters>
+                                        <parameter>1h</parameter>
+                                    </parameters>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>hpe.nimble.get.volumes</key>
+                            </master_item>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>25f94b4bdd1d4b968d04f31b8d5c495f</uuid>
+                            <name>Combined Latency for {#POOLNAME}</name>
+                            <type>DEPENDENT</type>
+                            <key>hpe.nimble.combined.latency[{#POOLNAME}]</key>
+                            <trends>0</trends>
+                            <preprocessing>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[?(@.name == '{#POOLNAME}')]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].avg_stats_last_5mins</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].combined_latency</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[0]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JAVASCRIPT</type>
+                                    <parameters>
+                                        <parameter>return parseInt(value);
+</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>DISCARD_UNCHANGED_HEARTBEAT</type>
+                                    <parameters>
+                                        <parameter>1h</parameter>
+                                    </parameters>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>hpe.nimble.get.volumes</key>
+                            </master_item>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>b3b7b47438bc44fb8b78ebe8ca8eb879</uuid>
+                            <name>Combined Throughput for {#POOLNAME}</name>
+                            <type>DEPENDENT</type>
+                            <key>hpe.nimble.combined.throughput[{#POOLNAME}]</key>
+                            <trends>0</trends>
+                            <preprocessing>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[?(@.name == '{#POOLNAME}')]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].avg_stats_last_5mins</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].combined_throughput</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[0]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JAVASCRIPT</type>
+                                    <parameters>
+                                        <parameter>return parseInt(value);
+</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>DISCARD_UNCHANGED_HEARTBEAT</type>
+                                    <parameters>
+                                        <parameter>1h</parameter>
+                                    </parameters>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>hpe.nimble.get.volumes</key>
+                            </master_item>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>f77e4c3e6ad64871a858b51ba4ef91fc</uuid>
+                            <name>Read IOPS for {#POOLNAME}</name>
+                            <type>DEPENDENT</type>
+                            <key>hpe.nimble.read.iops[{#POOLNAME}]</key>
+                            <trends>0</trends>
+                            <preprocessing>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[?(@.name == '{#POOLNAME}')]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].avg_stats_last_5mins</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].read_iops</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[0]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JAVASCRIPT</type>
+                                    <parameters>
+                                        <parameter>return parseInt(value);
+</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>DISCARD_UNCHANGED_HEARTBEAT</type>
+                                    <parameters>
+                                        <parameter>1h</parameter>
+                                    </parameters>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>hpe.nimble.get.volumes</key>
+                            </master_item>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>86fe0f493b704eac88cc411733b5a86c</uuid>
+                            <name>Read Latency for {#POOLNAME}</name>
+                            <type>DEPENDENT</type>
+                            <key>hpe.nimble.read.latency[{#POOLNAME}]</key>
+                            <trends>0</trends>
+                            <preprocessing>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[?(@.name == '{#POOLNAME}')]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].avg_stats_last_5mins</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].read_latency</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[0]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JAVASCRIPT</type>
+                                    <parameters>
+                                        <parameter>return parseInt(value);
+</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>DISCARD_UNCHANGED_HEARTBEAT</type>
+                                    <parameters>
+                                        <parameter>1h</parameter>
+                                    </parameters>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>hpe.nimble.get.volumes</key>
+                            </master_item>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>81dae046c3684b7ab988800eecba7535</uuid>
+                            <name>Read Throughput for {#POOLNAME}</name>
+                            <type>DEPENDENT</type>
+                            <key>hpe.nimble.read.throughput[{#POOLNAME}]</key>
+                            <trends>0</trends>
+                            <preprocessing>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[?(@.name == '{#POOLNAME}')]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].avg_stats_last_5mins</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].read_throughput</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[0]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JAVASCRIPT</type>
+                                    <parameters>
+                                        <parameter>return parseInt(value);
+</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>DISCARD_UNCHANGED_HEARTBEAT</type>
+                                    <parameters>
+                                        <parameter>1h</parameter>
+                                    </parameters>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>hpe.nimble.get.volumes</key>
+                            </master_item>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>31647397db9a44378e3aab4b41073814</uuid>
+                            <name>Write IOPS for {#POOLNAME}</name>
+                            <type>DEPENDENT</type>
+                            <key>hpe.nimble.write.iops[{#POOLNAME}]</key>
+                            <trends>0</trends>
+                            <preprocessing>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[?(@.name == '{#POOLNAME}')]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].avg_stats_last_5mins</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].write_iops</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[0]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JAVASCRIPT</type>
+                                    <parameters>
+                                        <parameter>return parseInt(value);
+</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>DISCARD_UNCHANGED_HEARTBEAT</type>
+                                    <parameters>
+                                        <parameter>1h</parameter>
+                                    </parameters>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>hpe.nimble.get.volumes</key>
+                            </master_item>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>11273720c1a540de8eea8fef05ebdfd7</uuid>
+                            <name>Write Latency for {#POOLNAME}</name>
+                            <type>DEPENDENT</type>
+                            <key>hpe.nimble.write.latency[{#POOLNAME}]</key>
+                            <trends>0</trends>
+                            <preprocessing>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[?(@.name == '{#POOLNAME}')]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].avg_stats_last_5mins</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].write_latency</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[0]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JAVASCRIPT</type>
+                                    <parameters>
+                                        <parameter>return parseInt(value);
+</parameter>
+                                    </parameters>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>hpe.nimble.get.volumes</key>
+                            </master_item>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>0e725e889a844bf4ae374e5c5d83dba8</uuid>
+                            <name>Write Throughput for {#POOLNAME}</name>
+                            <type>DEPENDENT</type>
+                            <key>hpe.nimble.write.throughput[{#POOLNAME}]</key>
+                            <trends>0</trends>
+                            <preprocessing>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[?(@.name == '{#POOLNAME}')]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].avg_stats_last_5mins</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].write_throughput</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[0]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JAVASCRIPT</type>
+                                    <parameters>
+                                        <parameter>return parseInt(value);
+</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>DISCARD_UNCHANGED_HEARTBEAT</type>
+                                    <parameters>
+                                        <parameter>1h</parameter>
+                                    </parameters>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>hpe.nimble.get.volumes</key>
+                            </master_item>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>7fbf5b3973e64a28be7cd8a8f210af63</uuid>
+                            <name>Volume pool latency {#POOLNAME}</name>
+                            <type>DEPENDENT</type>
+                            <key>pool.info[{#POOLNAME}]</key>
+                            <value_type>TEXT</value_type>
+                            <preprocessing>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[?(@.name == '{#POOLNAME}')]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].avg_stats_last_5mins</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>DISCARD_UNCHANGED_HEARTBEAT</type>
+                                    <parameters>
+                                        <parameter>1h</parameter>
+                                    </parameters>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>hpe.nimble.get.volumes</key>
+                            </master_item>
+                        </item_prototype>
+                    </item_prototypes>
+                    <master_item>
+                        <key>hpe.nimble.get.volumes</key>
+                    </master_item>
+                    <lld_macro_paths>
+                        <lld_macro_path>
+                            <lld_macro>{#POOLNAME}</lld_macro>
+                            <path>$.search_name</path>
+                        </lld_macro_path>
+                    </lld_macro_paths>
+                </discovery_rule>
+                <discovery_rule>
+                    <uuid>4655891ee0ed4c31b1e5a06192bf5fda</uuid>
+                    <name>Network Interfaces Discovery</name>
+                    <type>DEPENDENT</type>
+                    <key>hpe.nimble.network.interfaces.discovery</key>
+                    <item_prototypes>
+                        <item_prototype>
+                            <uuid>32db5bc02bae4372b20581cdd9a7868e</uuid>
+                            <name>Network Interface {#CONTROLLERNAME}/{#INTERFACENAME} Status</name>
+                            <type>DEPENDENT</type>
+                            <key>hpe.nimble.network.interface.[{#ID}]</key>
+                            <value_type>TEXT</value_type>
+                            <preprocessing>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[?(@.controller_name == '{#CONTROLLERNAME}' &amp;&amp; @.name == '{#INTERFACENAME}')]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].link_status</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[0]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>DISCARD_UNCHANGED_HEARTBEAT</type>
+                                    <parameters>
+                                        <parameter>1h</parameter>
+                                    </parameters>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>hpe.nimble.get.network.interfaces</key>
+                            </master_item>
+                            <trigger_prototypes>
+                                <trigger_prototype>
+                                    <uuid>bb7c504fb5184e93a807d9a992c711db</uuid>
+                                    <expression>last(/HPE Alletra Storage by HTTP/hpe.nimble.network.interface.[{#ID}])=&quot;link_status_down&quot;
+and
+last(/HPE Alletra Storage by HTTP/hpe.nimble.network.interface.[{#ID}], #2)=&quot;link_status_up&quot;</expression>
+                                    <name>Storage link {#CONTROLLERNAME}/{#INTERFACENAME} down</name>
+                                    <priority>HIGH</priority>
+                                </trigger_prototype>
+                            </trigger_prototypes>
+                        </item_prototype>
+                    </item_prototypes>
+                    <master_item>
+                        <key>hpe.nimble.get.network.interfaces</key>
+                    </master_item>
+                    <lld_macro_paths>
+                        <lld_macro_path>
+                            <lld_macro>{#CONTROLLERNAME}</lld_macro>
+                            <path>$.controller_name</path>
+                        </lld_macro_path>
+                        <lld_macro_path>
+                            <lld_macro>{#ID}</lld_macro>
+                            <path>$.id</path>
+                        </lld_macro_path>
+                        <lld_macro_path>
+                            <lld_macro>{#INTERFACENAME}</lld_macro>
+                            <path>$.name</path>
+                        </lld_macro_path>
+                    </lld_macro_paths>
+                </discovery_rule>
+            </discovery_rules>
+            <macros>
+                <macro>
+                    <macro>{$HPE.NIMBLE.API.PASSWORD}</macro>
+                    <type>SECRET_TEXT</type>
+                    <description>Password of the API user</description>
+                </macro>
+                <macro>
+                    <macro>{$HPE.NIMBLE.API.PORT}</macro>
+                    <value>5392</value>
+                    <description>The port number of the API endpoint default is 5392</description>
+                </macro>
+                <macro>
+                    <macro>{$HPE.NIMBLE.API.USERNAME}</macro>
+                    <value>admin</value>
+                    <description>Username of the API user</description>
+                </macro>
+                <macro>
+                    <macro>{$HPE.NIMBLE.IP}</macro>
+                    <value>&lt;SET-HOST-IP&gt;</value>
+                    <description>IP Address of the nimble storage device</description>
+                </macro>
+            </macros>
+            <valuemaps>
+                <valuemap>
+                    <uuid>daa90d49027a405ab78ff8478e49838c</uuid>
+                    <name>Controller Status</name>
+                    <mappings>
+                        <mapping>
+                            <value>1</value>
+                            <newvalue>active</newvalue>
+                        </mapping>
+                        <mapping>
+                            <value>0</value>
+                            <newvalue>standby</newvalue>
+                        </mapping>
+                    </mappings>
+                </valuemap>
+                <valuemap>
+                    <uuid>9a229c85694840d3a38d92d53c68c3bd</uuid>
+                    <name>Link Status Mapping</name>
+                    <mappings>
+                        <mapping>
+                            <value>link_status_up</value>
+                            <newvalue>1</newvalue>
+                        </mapping>
+                        <mapping>
+                            <value>link_status_down</value>
+                            <newvalue>0</newvalue>
+                        </mapping>
+                    </mappings>
+                </valuemap>
+            </valuemaps>
+        </template>
+    </templates>
+    <triggers>
+        <trigger>
+            <uuid>00f825fca885403aa047d0fc93c2b2a8</uuid>
+            <expression>(last(/HPE Alletra Storage by HTTP/hpe.nimble.used.storage)/last(/HPE Alletra Storage by HTTP/hpe.nimble.array.usable.capacity)&gt;0.9)</expression>
+            <name>Storage Capacity 90% Full</name>
+            <priority>WARNING</priority>
+        </trigger>
+        <trigger>
+            <uuid>1ed017673ac349aa992575b2f6473e52</uuid>
+            <expression>(last(/HPE Alletra Storage by HTTP/hpe.nimble.used.storage)/last(/HPE Alletra Storage by HTTP/hpe.nimble.array.usable.capacity)&gt;0.95)</expression>
+            <name>Storage Capacity 95% Full</name>
+            <priority>HIGH</priority>
+        </trigger>
+        <trigger>
+            <uuid>e4cf65ee72184357a5d39bf420166366</uuid>
+            <expression>(last(/HPE Alletra Storage by HTTP/hpe.nimble.used.storage)/last(/HPE Alletra Storage by HTTP/hpe.nimble.array.usable.capacity)&gt;=0.99)</expression>
+            <name>Storage Capacity Full</name>
+            <priority>DISASTER</priority>
+        </trigger>
+    </triggers>
+</zabbix_export>
