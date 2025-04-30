@@ -1,4 +1,4 @@
-# 🧰 Zabbix Template for HPE Nimble & HP HPE Storage Systems
+# 🧰 Zabbix Template for HPE Nimble / Alletra Storage Systems
 
 This Zabbix template is designed to monitor multiple HP HPE Storage Systems, with a strong focus on **HPE Nimble Storage** — a system for which working templates are hard to find.
 
