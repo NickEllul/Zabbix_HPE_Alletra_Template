@@ -686,6 +686,97 @@ try {
                             </master_item>
                         </item_prototype>
                         <item_prototype>
+                            <uuid>4f73c802068d4a4881e082da9f450c40</uuid>
+                            <name>Volume {#POOLNAME} Size GiB</name>
+                            <type>DEPENDENT</type>
+                            <key>hpe.nimble.volume.size[{#POOLNAME}]</key>
+                            <value_type>FLOAT</value_type>
+                            <preprocessing>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[?(@.name == '{#POOLNAME}')]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].size</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[0]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JAVASCRIPT</type>
+                                    <parameters>
+                                        <parameter>return Math.round((value / 1024) * 100) / 100;</parameter>
+                                    </parameters>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>hpe.nimble.get.volumes</key>
+                            </master_item>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>746b22a65117497faaaff1190c824a04</uuid>
+                            <name>Volume {#POOLNAME} Mapped Usage GiB</name>
+                            <type>DEPENDENT</type>
+                            <key>hpe.nimble.volume.usage.mapped[{#POOLNAME}]</key>
+                            <preprocessing>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[?(@.name == '{#POOLNAME}')]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[*].vol_usage_mapped_bytes</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JSONPATH</type>
+                                    <parameters>
+                                        <parameter>$[0]</parameter>
+                                    </parameters>
+                                </step>
+                                <step>
+                                    <type>JAVASCRIPT</type>
+                                    <parameters>
+                                        <parameter>return Math.round((value / 1073741824) * 100) / 100;</parameter>
+                                    </parameters>
+                                </step>
+                            </preprocessing>
+                            <master_item>
+                                <key>hpe.nimble.get.volumes</key>
+                            </master_item>
+                        </item_prototype>
+                        <item_prototype>
+                            <uuid>9c1b90c354ad427ba5f62557e1262697</uuid>
+                            <name>Volume {#POOLNAME} Used %</name>
+                            <type>CALCULATED</type>
+                            <key>hpe.nimble.volume.used.percent[{#POOLNAME}]</key>
+                            <value_type>FLOAT</value_type>
+                            <units>%</units>
+                            <params>(last(//hpe.nimble.volume.usage.mapped[{#POOLNAME}]) / last(//hpe.nimble.volume.size[{#POOLNAME}])) * 100</params>
+                            <trigger_prototypes>
+                                <trigger_prototype>
+                                    <uuid>c6975615037a464bafccd1745db09b62</uuid>
+                                    <expression>min(/HPE Alletra Storage by HTTP/hpe.nimble.volume.used.percent[{#POOLNAME}],30m)&gt;80</expression>
+                                    <recovery_mode>RECOVERY_EXPRESSION</recovery_mode>
+                                    <recovery_expression>max(/HPE Alletra Storage by HTTP/hpe.nimble.volume.used.percent[{#POOLNAME}],10m)&lt;80</recovery_expression>
+                                    <name>Volume {#POOLNAME} usage is over 80%</name>
+                                    <event_name>{#POOLNAME} usage is over 80%</event_name>
+                                    <priority>WARNING</priority>
+                                </trigger_prototype>
+                            </trigger_prototypes>
+                        </item_prototype>
+                        <item_prototype>
                             <uuid>31647397db9a44378e3aab4b41073814</uuid>
                             <name>Write IOPS for {#POOLNAME}</name>
                             <type>DEPENDENT</type>
@@ -952,7 +1043,7 @@ last(/HPE Alletra Storage by HTTP/hpe.nimble.network.interface.[{#ID}], #2)=&quo
                 </macro>
                 <macro>
                     <macro>{$HPE.NIMBLE.API.USERNAME}</macro>
-                    <value>admin</value>
+                    <value>&lt;username&gt;</value>
                     <description>Username of the API user</description>
                 </macro>
                 <macro>
